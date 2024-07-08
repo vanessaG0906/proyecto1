@@ -1,0 +1,174 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+   <meta http-equiv="Content-type" content="text/html;charset=utf-8">
+   <title>Sqlite Crear la base de datos</title>
+   <style>
+   	body{
+   		width:960px;
+   		margin:0 auto;
+   	}
+   	table{width: 100%;}
+   	.centra{text-align: center;}
+   	.der{text-align: right;}
+   	#modificar{ display:none; }
+   	#modificar fieldset{ background: #ddd; }
+	#modificar td{ text-align: right; }
+	#modificar input{width: 100%;}
+	#modificar table{width: 100%;}
+	#modificar input[type=text]:focus{background: lightblue;}
+	.rojo{color:red;}
+   </style>
+
+<script>
+/******************
+ V A R I A B L E S
+*******************/
+var db;
+var base = "libros";
+var ver = "1.0";
+var desc = "Mis libros";
+var size = 2 * 1024 *1024;
+//
+window.onload = function(){
+	if (!window.openDatabase) {
+		alert('Este navegador NO soporta el API WebSQL');
+		return;
+	} 
+	//Abrimos o creamos una base de datos
+	db = openDatabase(base, ver, desc, size);
+	//Crear la tabla
+	q = 'CREATE TABLE if not exists libros(';
+	q += 'id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,';
+	q += 'nombre TEXT NOT NULL,';
+	q += 'autor TEXT NOT NULL,';
+	q += 'anio INTEGER,';
+	q += 'editorial TEXT,';
+	q += 'precio REAL DEFAULT 0.00,';
+	q += 'fecha TEXT CURRENT_TIMESTAMP)';
+	db.transaction(function(tx){
+		tx.executeSql(q);
+	},
+	errorHandler,
+	exitoCreate);
+}
+/***********************
+     H A N D L E R S
+************************/
+function exitoCreate() {
+	console.log("CREATE exitosa")
+	select();
+}
+function exitoSelect() {
+	console.log("SELECT exitosa")
+}
+function errorHandler(e) {
+	console.log("error: "+e.message);
+}
+/************************
+    F U N C I O N E S 
+*************************/
+function select() {
+	//Acultar la vista modificar, mostrar la vista listado
+	document.getElementById("modificar").style.display="none";
+	document.getElementById("listado").style.display="block";
+	//Select
+	var q = 'SELECT * FROM libros';
+	//Tansacción de SQLite
+	db.transaction(function(tx){
+	    tx.executeSql(q,[],function (tx, data) {
+	      var len = data.rows.length, i;
+	      //Crear la tabla
+	      cadena = "<p>libros: " + len + "</p>";
+	      cadena += "<p>" + fecha() + "</p>";
+	      cadena += "<table border='1'>";
+	      //Encabezados
+	      cadena += "<tr><th>id</th><th>Titulo</th><th>Autor</th><th>Año</th><th>Editorial</th><th>Precio</th><th>Fecha</th><th>Modificar</th><th>Borrar</th></tr>";
+	      //Renglones
+	      for (var i = 0; i < len; i++){
+	      		cadena += "<tr>";
+	      		//Campos
+	      		cadena += "<td>"+data.rows.item(i).id+"</td>";
+	            cadena += "<td>"+data.rows.item(i).nombre+"</td>";
+	            cadena += "<td>"+data.rows.item(i).autor+"</td>";
+	            cadena += "<td>"+data.rows.item(i).anio+"</td>";
+	            cadena += "<td>"+data.rows.item(i).editorial+"</td>";
+	            cadena += "<td class='der'>"+formatoNumero(data.rows.item(i).precio,2)+"</td>";
+	            cadena += "<td>"+data.rows.item(i).fecha+"</td>";
+	            //Botones
+	            cadena += "<td class='centra'><button id='m"+data.rows.item(i).id+"'>Modificar</button></td>";
+	            cadena += "<td class='centra'><button id='b"+data.rows.item(i).id+"'>Borrar</button></td>";
+	            cadena += "</tr>";
+	      }
+	      cadena += "</table>";
+	      cadena += "<br>";
+	      //Creamos el botón de alta
+	      cadena += "<input type='button' id='alta' value='Dar de alta un libro'>";
+	      //Vaciamos cadena
+	      document.getElementById('salida').innerHTML = cadena;
+	      //Creamos los "listeners" dinámicamente
+	      var botones = document.getElementsByTagName("button");
+	      for(i=0; i<botones.length; i++){
+	      	botones[i].onclick = selecciona;
+	      }
+	      //Listener para el botón de alta
+	      document.getElementById("alta").addEventListener("click", alta);
+	    });
+	},
+	errorHandler,
+	exitoSelect);
+}
+function selecciona(e) {
+	console.log(e);
+}
+function fecha(){
+	return "2016-07-16";
+}
+function formatoNumero(num){
+	return num;
+}
+</script>
+</head>
+
+<body>
+	<div id="listado">
+    <h1 class="centra">LISTADO DE LIBROS</h1>
+    <div id="salida"></div>
+    </div>
+
+    <div id="modificar">
+    <div id="formaModifica">
+		<fieldset>
+		<legend id="leyenda">Alta de libro</legend>
+		<table>
+			<tr>
+				<td><label for="nombre">* Titulo:</label></td>
+				<td><input type="text" name="nombre" id="nombre"></td>
+			</tr>
+			<tr>
+				<td><label for="autor">* Autor:</label></td>
+				<td><input type="text" name="autor" id="autor"></td>
+			</tr>
+			<tr>
+				<td><label for="anio">Año:</label></td>
+				<td><input type="text" name="anio" id="anio"></td>
+			</tr>
+			<tr>
+				<td><label for="editorial">Editorial:</label></td>
+				<td><input type="text" name="editorial" id="editorial"></td>
+			</tr>
+			<tr>
+				<td><label for="precio">Precio:</label></td>
+				<td><input type="text" name="precio" id="precio"></td>
+			</tr>
+			<tr>
+				<td><input type="hidden" id="id"></td>
+				<td><input type="submit" name="enviar" id="enviar" value="Modificar"></td>
+			</tr>
+		</table>
+		<a href="03-select.html">Regresar</a>
+		</fieldset>
+	</div>
+    </div>
+</body>
+</html> 
