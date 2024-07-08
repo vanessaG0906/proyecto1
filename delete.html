@@ -1,0 +1,159 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+   <meta http-equiv="Content-type" content="text/html;charset=utf-8">
+   <title>Sqlite Delete</title>
+
+<script>
+var db;
+window.onload = function(){
+	if (!window.openDatabase) {
+		alert('Este navegador NO soporta el API WebSQL');
+		return;
+	} 
+	//Abrimos o creamos una base de datos
+	db = openDatabase('libros', '1.0', 'Mis libros', 2 * 1024 *1024);
+	dropLibros();
+}
+function exitoDropLibros() {
+	console.log("DROP libros exitoso");
+	crear();
+}
+function exitoCreate() {
+	console.log("CREATE exitoso");
+	insert();
+}
+function exitoInsert() {
+	console.log("INSERT exitoso")
+	insert2();
+}
+function exitoInsert2() {
+	console.log("INSERT2 exitoso");
+	insert3();
+}
+function exitoInsert3() {
+	console.log("INSERT3 exitoso");
+	borrar();
+}
+function exitoDelete() {
+	console.log("UPDATE exitoso");
+	select();
+}
+function exitoSelect() {
+	console.log("SELECT exitoso");
+	console.log("======================");
+}
+/**************************/
+function errorHandler(transaccion, error) {
+	console.log('Error transacción');
+}
+/**************************/
+function crear() {
+	//Crear la tabla
+	var q = 'CREATE TABLE libros(id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, nombre TEXT NOT NULL, autor TEXT NOT NULL, anio INTEGER, editorial TEXT, precio REAL DEFAULT 0.00, fecha TEXT)';
+	db.transaction(function(tx){
+		tx.executeSql(q);
+	},
+	errorHandler,
+	exitoCreate);
+}
+function insert() {
+	//Insert
+	var q = "INSERT INTO libros(id,nombre,autor,anio,editorial,precio, fecha) "; 
+	q += "VALUES (NULL,";
+	q += "'Rayuela',";
+	q += "'Julio Cortazar',"; 
+	q += "1998,";
+	q += "'Diana',";
+	q += "180.50,";
+	q += "'2016-07-16');";
+	console.log(q);
+	db.transaction(function(tx){
+		tx.executeSql(q);
+	},
+	errorHandler,
+	exitoInsert);
+}
+function insert2() {
+	q = "INSERT INTO libros VALUES (NULL,";
+	q += "'El laberinto de la soledad',";
+	q += "'Octavio Paz', ";
+	q += "2000,";
+	q += "'Fondo de cultura', ";
+	q += "190.50,";
+	q += "'2016-07-16');";
+	console.log(q);
+	db.transaction(function(tx){
+		tx.executeSql(q);
+	},
+	errorHandler,
+	exitoInsert2);
+}
+function insert3() {
+	q = "INSERT INTO libros VALUES(?,?,?,?,?,?,?)";
+	id = 3;
+	nombre = 'La región más transparente';
+	autor = 'Carlos Fuentes'; 
+	anio = 1980;
+	editorial = 'Fondo de cultura';
+	precio = 290.50;
+	fecha = '2016-07-16';
+	console.log(q);
+	db.transaction(function(tx){
+		tx.executeSql(q,[id,nombre,autor,anio,editorial,precio,fecha],null,null);
+	},
+	errorHandler,
+	exitoInsert3);
+}
+function select() {
+	//Select
+	var q = 'SELECT * FROM libros';
+	db.transaction(function(tx){
+	    tx.executeSql(q,[],function (tx, data) {
+	      var len = data.rows.length, i;
+	      cadena = "<p>libros: " + len + "</p>";
+	      cadena += "<table border='1'>"
+	      cadena += "<tr><th>id</th><th>Titulo</th><th>Autor</th><th>Año</th><th>Editorial</th><th>Fecha</th></tr>"
+	      for (i = 0; i < len; i++){
+	      		cadena += "<tr>";
+	      		cadena += "<td>"+data.rows.item(i).id+"</td>";
+	             cadena += "<td>"+data.rows.item(i).nombre+"</td>";
+	             cadena += "<td>"+data.rows.item(i).autor+"</td>";
+	             cadena += "<td>"+data.rows.item(i).anio+"</td>";
+	             cadena += "<td>"+data.rows.item(i).editorial+"</td>";
+	             cadena += "<td>"+data.rows.item(i).fecha+"</td>";
+	            cadena += "</tr>";
+	      }
+	      cadena += "</table>";
+	      document.getElementById('salida').innerHTML = cadena;
+	    });
+	},
+	errorHandler,
+	exitoSelect);
+}
+function borrar() {
+	//Borramos una tabla
+	var q = 'DELETE FROM libros WHERE id=2';
+	db.transaction(function(tx){
+		tx.executeSql(q);
+	},
+	errorHandler,
+	exitoDelete);
+}
+function dropLibros() {
+	//Borramos una tabla
+	var q = 'DROP TABLE if exists libros';
+	db.transaction(function(tx){
+		tx.executeSql(q);
+	},
+	errorHandler,
+	exitoDropLibros);
+}
+</script>
+</head>
+
+<body>
+    <h1>Bienvenido a WebSQL</h1>
+    <div id="salida"></div>
+</body>
+</html> 
