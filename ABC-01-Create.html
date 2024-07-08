@@ -1,0 +1,109 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+   <meta http-equiv="Content-type" content="text/html;charset=utf-8">
+   <title>Sqlite Crear la base de datos</title>
+   <style>
+   	body{width:960px;margin:0 auto;}
+   	table{width: 100%;}
+   	.centra{text-align: center;}
+   	.der{text-align: right;}
+   	.rojo{color:red;}
+   	#modificar{ display:none; }
+   	#modificar fieldset{ background: #ddd; }
+	#modificar td{ text-align: right; }
+	#modificar input{width: 100%;}
+	#modificar table{width: 80%;}
+	#modificar input[type=text]:focus{background: lightblue;}
+   </style>
+
+<script>
+/******************
+ V A R I A B L E S
+*******************/
+var db;
+var base = "libros";
+var ver = "1.0";
+var desc = "Mis libros";
+var size = 2 * 1024 *1024;
+//
+window.onload = function(){
+	if (!window.openDatabase) {
+		alert('Este navegador NO soporta el API WebSQL');
+		return;
+	} 
+	//Abrimos o creamos una base de datos
+	db = openDatabase(base, ver, desc, size);
+	//Crear la tabla
+	q = 'CREATE TABLE if not exists libros(';
+	q += 'id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,';
+	q += 'nombre TEXT NOT NULL,';
+	q += 'autor TEXT NOT NULL,';
+	q += 'anio INTEGER,';
+	q += 'editorial TEXT,';
+	q += 'precio REAL DEFAULT 0.00,';
+	q += 'fecha TEXT CURRENT_TIMESTAMP)';
+	db.transaction(function(tx){
+		tx.executeSql(q);
+	},
+	errorHandler,
+	exitoCreate);
+}
+/***********************
+     H A N D L E R S
+************************/
+function exitoCreate() {
+	console.log("CREATE exitosa")
+}
+function errorHandler(e) {
+	console.log("error: "+e.message);
+}
+/************************
+    F U N C I O N E S 
+*************************/
+
+</script>
+</head>
+
+<body>
+	<div id="listado">
+    <h1 class="centra">LISTADO DE LIBROS</h1>
+    <div id="salida"></div>
+    </div>
+
+    <div id="modificar">
+    <div id="formaModifica">
+		<fieldset>
+		<legend id="leyenda">Alta de libro</legend>
+		<table>
+			<tr>
+				<td><label for="nombre">* Titulo:</label></td>
+				<td><input type="text" name="nombre" id="nombre"></td>
+			</tr>
+			<tr>
+				<td><label for="autor">* Autor:</label></td>
+				<td><input type="text" name="autor" id="autor"></td>
+			</tr>
+			<tr>
+				<td><label for="anio">Año:</label></td>
+				<td><input type="text" name="anio" id="anio"></td>
+			</tr>
+			<tr>
+				<td><label for="editorial">Editorial:</label></td>
+				<td><input type="text" name="editorial" id="editorial"></td>
+			</tr>
+			<tr>
+				<td><label for="precio">Precio:</label></td>
+				<td><input type="text" name="precio" id="precio"></td>
+			</tr>
+			<tr>
+				<td><input type="hidden" id="id"></td>
+				<td><input type="submit" name="enviar" id="enviar" value="Modificar"></td>
+			</tr>
+		</table>
+		<a href="ABC-01-Create.html">Regresar</a>
+		</fieldset>
+	</div>
+    </div>
+</body>
+</html> 
