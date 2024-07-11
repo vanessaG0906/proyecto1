@@ -1,0 +1,375 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+   <meta http-equiv="Content-type" content="text/html;charset=utf-8">
+   <title>Sqlite Operadores matemáticos</title>
+   <style>
+   	body{width:960px;margin:0 auto;}
+   	table{width: 100%;}
+   	th{background: blue; color:white;}
+	tr:nth-child(odd){background:gray;}
+   	.centra{text-align: center;}
+   	.der{text-align: right;}
+   	.rojo{color:red;}
+   	#modificar{ display:none; margin:0 auto; }
+   	#modificar fieldset{ background: #ddd; }
+	#modificar td{ text-align: right; }
+	#modificar input{width: 100%;}
+	#modificar {width: 40%;}
+	#modificar input[type=text]:focus{background: lightblue;}
+	#modificar input[type=text]:blur{background: white;}
+   </style>
+
+<script>
+/******************
+ V A R I A B L E S
+*******************/
+var db;
+var base = "libros";
+var ver = "1.0";
+var desc = "Mis libros";
+var size = 2 * 1024 *1024;
+//
+window.onload = function(){
+	if (!window.openDatabase) {
+		alert('Este navegador NO soporta el API WebSQL');
+		return;
+	} 
+	//Abrimos o creamos una base de datos
+	db = openDatabase(base, ver, desc, size);
+	//Crear la tabla
+	q = 'CREATE TABLE if not exists libros(';
+	q += 'id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,';
+	q += 'nombre TEXT NOT NULL,';
+	q += 'autor TEXT NOT NULL,';
+	q += 'anio INTEGER,';
+	q += 'editorial TEXT,';
+	q += 'precio REAL DEFAULT 0.00,';
+	q += 'fecha TEXT CURRENT_TIMESTAMP)';
+	db.transaction(function(tx){
+		tx.executeSql(q);
+	},
+	errorHandler,
+	exitoCreate);
+	//Listeners
+	document.getElementById("enviar").addEventListener("click", modificaLibro);
+}
+/***********************
+     H A N D L E R S
+************************/
+function exitoCreate() {
+	console.log("CREATE exitosa")
+	select();
+}
+function exitoSelect() {
+	console.log("SELECT exitosa");
+	filtros();
+}
+function exitoDelete() {
+	console.log("DELETE exitosa")
+	alert("Se borró correctamente el registro");
+	select();
+}
+function exitoUpdate() {
+	console.log("UPDATE exitosa");
+	alert("Se modificó correctamente el registro");
+	select();
+}
+function exitoInsert() {
+	console.log("INSERT exitosa");
+	alert("Se insertó correctamente el registro");
+	select();
+}
+function exitoFiltros() {
+	console.log("FILTROS exitosa");
+	precios();
+	anios();
+}
+function errorHandler(e) {
+	console.log("error: "+e.message);
+}
+/************************
+    F U N C I O N E S 
+*************************/
+function select(filtro) {
+	filtro = filtro || "";
+	document.getElementById("modificar").style.display="none";
+	document.getElementById("listado").style.display="block";
+	//Select
+	var q = 'SELECT * FROM libros';
+	if (filtro=="baratos") {
+		q += " WHERE precio<500";
+	} else if (filtro=="medios") {
+		q += " WHERE precio>=500 AND precio<1000";
+	} else if(filtro=="caros") {
+		q += " WHERE precio>=1000";
+	} else if(filtro=="pares") {
+		q += " WHERE anio%2=0";
+	} else if(filtro=="impares") {
+		q += " WHERE anio%2=1";
+	} else if(filtro!=""){
+		q += " WHERE autor='"+filtro+"'";
+	}
+	db.transaction(function(tx){
+	    tx.executeSql(q,[],function (tx, data) {
+	      var len = data.rows.length, i;
+	      cadena = "<p>libros: " + len + "</p>";
+	      cadena += "<p>" + fecha() + "</p>";
+	      cadena += "<table>"
+	      cadena += "<tr><th>id</th><th>Titulo</th><th>Autor</th><th>Año</th><th>Editorial</th><th>Precio</th><th>Fecha</th><th>Modificar</th><th>Borrar</th></tr>";
+	      for (i = 0; i < len; i++){
+	      		cadena += "<tr>";
+	      		cadena += "<td>"+data.rows.item(i).id+"</td>";
+	             cadena += "<td>"+data.rows.item(i).nombre+"</td>";
+	             cadena += "<td>"+data.rows.item(i).autor+"</td>";
+	             cadena += "<td>"+data.rows.item(i).anio+"</td>";
+	             cadena += "<td>"+data.rows.item(i).editorial+"</td>";
+	             cadena += "<td class='der'>"+formatoNumero(data.rows.item(i).precio,2)+"</td>";
+	             cadena += "<td>"+data.rows.item(i).fecha+"</td>";
+	             cadena += "<td class='centra'><button id='m"+data.rows.item(i).id+"'>Modificar</button></td>";
+	             cadena += "<td class='centra'><button id='b"+data.rows.item(i).id+"'>Borrar</button></td>";
+	            cadena += "</tr>";
+	      }
+	      cadena += "</table>";
+	      cadena += "<br>";
+	      cadena += "<input type='button' id='alta' value='Dar de alta un libro'>";
+	      document.getElementById('salida').innerHTML = cadena;
+	      var botones = document.getElementsByTagName("button");
+	      for(i=0; i<botones.length; i++){
+	      	botones[i].onclick = selecciona;
+	      }
+	      document.getElementById("alta").addEventListener("click", alta);
+	    });
+	},
+	errorHandler,
+	exitoSelect);
+}
+function selecciona(e) {
+	var id = e.target.id;
+	var accion = id.substr(0,1);
+	var num = id.substr(1);
+	if(accion=="m"){
+		if(confirm("¿Desea modificar el registro "+num+"?")){
+			modificar(num);
+		}
+	} else if (confirm("¿Desea borrar el registro "+num+"?\n Una vez borrado el registro, no se podrá recuperar")){
+			borrar(num);
+	}
+}
+function alta() {
+	document.getElementById("modificar").style.display="block";
+	document.getElementById("listado").style.display="none";
+	document.getElementById("leyenda").innerHTML = "Alta de un libro";
+	document.getElementById("enviar").value = "Enviar los datos";
+}
+function modificar(id) {
+	document.getElementById("modificar").style.display="block";
+	document.getElementById("listado").style.display="none";
+	document.getElementById("leyenda").innerHTML = "Modificar un libro";
+	document.getElementById("enviar").value = "Modificar";
+	var q = 'SELECT * FROM libros WHERE id='+id;
+	db.transaction(function(tx){
+	    tx.executeSql(q,[],function (tx, data) {
+	    	document.getElementById("id").value = id;
+	    	document.getElementById("nombre").value = data.rows.item(0).nombre;
+	    	document.getElementById("autor").value = data.rows.item(0).autor; 
+	    	document.getElementById("editorial").value = data.rows.item(0).editorial; 
+	    	document.getElementById("anio").value = data.rows.item(0).anio; 
+	    	document.getElementById("precio").value = formatoNumero(data.rows.item(0).precio,2);  
+	    });
+	},
+	errorHandler,
+	exitoSelect);
+}
+function borrar(id) {
+	q = "DELETE FROM libros WHERE id="+id;
+	console.log(q);
+	db.transaction(function(tx){
+		tx.executeSql(q);
+	},
+	errorHandler,
+	exitoDelete);
+}
+function modificaLibro(e) {
+	id = document.getElementById("id").value;
+	nombre = document.getElementById("nombre").value;
+	autor = document.getElementById("autor").value;
+	anio = document.getElementById("anio").value;
+	editorial = document.getElementById("editorial").value;
+	precio = document.getElementById("precio").value;
+	if(nombre==""){ 
+		alert("El título no puede ser vacío")
+	} else if (autor=="") {
+		alert("El autor no puede ser vacío")
+	} else {
+		precio = limpiaNumero(precio,2);
+		if(id==""){
+			q = "INSERT INTO libros VALUES(?,?,?,?,?,?,?)";
+			id = null;
+			hoy = fecha();
+			console.log(q);
+			db.transaction(function(tx){
+				tx.executeSql(q,[id,nombre,autor,anio,editorial,precio,hoy]);
+			},
+			errorHandler,
+			exitoInsert);
+		} else {
+			q = "UPDATE libros SET ";
+			q += "nombre = '"+nombre+"', ";
+			q += "autor = '"+autor+"', ";
+			q += "anio = "+anio+", ";
+			q += "editorial = '"+editorial+"', ";
+			q += "precio = "+precio+", ";
+			q += "fecha = '"+fecha()+"' ";
+			q += "WHERE id="+id;
+			console.log(q);
+			db.transaction(function(tx){
+				tx.executeSql(q);
+			},
+			errorHandler,
+			exitoUpdate);
+		}
+	}
+}
+function fecha() {
+	var f = new Date();
+	var fecha =  f.getFullYear()+"-";
+	fecha += (f.getMonth() + 1<10)? "0"+(f.getMonth() +1) : (f.getMonth() +1);
+	fecha += "-";
+	fecha += (f.getDate()<10)? "0"+f.getDate() : f.getDate();
+	fecha += " ";
+	fecha += (f.getHours()<10)? "0"+f.getHours() : f.getHours();
+	fecha += ":";
+	fecha += (f.getMinutes()<10)? "0"+f.getMinutes() : f.getMinutes();
+	fecha += ":";
+	fecha += (f.getSeconds()<10)? "0"+f.getSeconds() : f.getSeconds();
+	return fecha;
+}
+function limpiaNumero(cantidad, decimales){
+	// Convertimos en cadena
+    cantidad = cantidad.toString();
+    // Eliminamos cualquier caracter diferente a numero y punto
+    cantidad = parseFloat(cantidad.replace(/[^0-9\.]/g, '')); 
+	// Si el parámetro no fue pasado
+    decimales = decimales || 0; 
+    // Si no es un número, regresamos cero
+    if (isNaN(cantidad) || cantidad === 0) 
+        return parseFloat(0).toFixed(decimales)
+    // Si es decimal y lo convertimos en cadena
+    cantidad = cantidad.toFixed(decimales).toString();
+	//
+    return cantidad;
+}
+function formatoNumero(cantidad, decimales) {
+	// Si el parámetro no fue pasado
+    decimales = decimales || 0; 
+
+    cantidad = limpiaNumero(cantidad,decimales);
+
+    //Dividimos las partes de la cantidad
+    var cantidad_partes = cantidad.split('.'),
+        regexp = /(\d+)(\d{3})/;
+
+    //Revisamos cada parte de la cantidad
+    while (regexp.test(cantidad_partes[0]))
+        cantidad_partes[0] = cantidad_partes[0].replace(regexp, '$1' + ',' + '$2');
+
+    //Unimos las dos partes
+    return cantidad_partes.join('.');
+}
+function filtros() {
+	var q = 'SELECT DISTINCT autor FROM libros';
+	db.transaction(function(tx){
+	    tx.executeSql(q,[],function (tx, data) {
+	    	var len = data.rows.length, i;
+	      	cadena = "<select id='autores' name='autores'>";
+	      	cadena += "<option value=''>-Selecciona un autor-</option>";
+	      	for (i = 0; i < len; i++){
+	      		autor = data.rows.item(i).autor;
+	      		cadena += "<option value='"+autor+"'>";
+	      		cadena += autor;
+	            cadena += "</option>";
+	      }
+	      cadena += "<option value='todos'>Todos los autores</option>";
+	      cadena += "</select>";
+	      document.getElementById('filtros').innerHTML = cadena;
+	      document.getElementById('filtros').onchange = filtroSelect;
+	    });
+	},
+	errorHandler,
+	exitoFiltros);
+}
+function filtroSelect(e) {
+	var a = e.target.value;
+	if(a=="todos") a = "";
+	select(a);
+}
+function precios() {
+	cadena = "<select name='precios'>";
+	cadena += "<option value=''>-Selecciona un rango de precios-</option>";
+	cadena += "<option value='baratos'>Baratos (menores de 500)</option>";
+	cadena += "<option value='medios'>Medios (entre 500 y 1,000)</option>";
+	cadena += "<option value='caros'>Caros (mayores de 1,000)</option>";
+	cadena += "<option value='todos'>Todos los precios</option>";
+	cadena += "</select>";
+	document.getElementById('precios').innerHTML = cadena;
+	document.getElementById('precios').onchange = filtroSelect;
+}
+function anios() {
+	cadena = "<select name='anios'>";
+	cadena += "<option value=''>-Selecciona un tipo de año-</option>";
+	cadena += "<option value='pares'>Años pares</option>";
+	cadena += "<option value='impares'>Años impares</option>";
+	cadena += "<option value='todos'>Todos los años</option>";
+	cadena += "</select>";
+	document.getElementById('anios').innerHTML = cadena;
+	document.getElementById('anios').onchange = filtroSelect;
+}
+</script>
+</head>
+
+<body>
+	<div id="listado">
+    <h1 class="centra">LISTADO DE LIBROS</h1>
+    <div id="filtros"></div>
+    <div id="precios"></div>
+    <div id="anios"></div>
+    <div id="salida"></div>
+    </div>
+
+    <div id="modificar">
+    <div id="formaModifica">
+		<fieldset>
+		<legend id="leyenda">Alta de libro</legend>
+		<table>
+			<tr>
+				<td><label for="nombre">* Titulo:</label></td>
+				<td><input type="text" name="nombre" id="nombre"></td>
+			</tr>
+			<tr>
+				<td><label for="autor">* Autor:</label></td>
+				<td><input type="text" name="autor" id="autor"></td>
+			</tr>
+			<tr>
+				<td><label for="anio">Año:</label></td>
+				<td><input type="text" name="anio" id="anio"></td>
+			</tr>
+			<tr>
+				<td><label for="editorial">Editorial:</label></td>
+				<td><input type="text" name="editorial" id="editorial"></td>
+			</tr>
+			<tr>
+				<td><label for="precio">Precio:</label></td>
+				<td><input type="text" name="precio" id="precio"></td>
+			</tr>
+			<tr>
+				<td><input type="hidden" id="id"></td>
+				<td><input type="submit" name="enviar" id="enviar" value="Modificar"></td>
+			</tr>
+		</table>
+		<a href="ABC-06-Funciones.html">Regresar</a>
+		</fieldset>
+	</div>
+    </div>
+</body>
+</html> 
